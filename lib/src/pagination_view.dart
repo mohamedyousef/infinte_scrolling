@@ -111,11 +111,15 @@ class PaginationListView<A, B> extends StatelessWidget {
   final EdgeInsets? padding;
   final ScrollController? scrollController;
   final bool reverse;
+  final ScrollPhysics? physics;
+  final bool? shrinkWrap;
 
   const PaginationListView({
     Key? key,
     this.itemExtent,
     this.padding,
+    this.shrinkWrap,
+    this.physics,
     this.reverse = false,
     this.scrollDirection,
     this.scrollController,
@@ -141,7 +145,8 @@ class PaginationListView<A, B> extends StatelessWidget {
         reverse: reverse,
         pagingController: controller.pagingController,
         scrollController: scrollController,
-        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        shrinkWrap: shrinkWrap ?? false,
+        physics: physics ?? const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
         builderDelegate: PagedChildBuilderDelegate<B>(
           noItemsFoundIndicatorBuilder: noItemsFoundBuilder,
           itemBuilder: itemWidgetBuilder,
@@ -168,9 +173,13 @@ class PaginationGridView<A, B> extends StatelessWidget {
   final WidgetBuilder? noItemsFoundBuilder;
   final WidgetBuilder? firstPageProgressIndicator;
   final WidgetBuilder? firstPageErrorIndicatorBuilder;
+  final ScrollPhysics? physics;
+  final bool? shrinkWrap;
 
   const PaginationGridView({
     Key? key,
+    this.shrinkWrap,
+    this.physics,
     this.aspectRatio,
     this.scrollController,
     this.crossAxisSpacing,
@@ -194,8 +203,9 @@ class PaginationGridView<A, B> extends StatelessWidget {
       child: PagedGridView<A?, B>(
         pagingController: controller.pagingController,
         scrollController: scrollController,
-        physics: const BouncingScrollPhysics(),
+        physics: physics ?? const BouncingScrollPhysics(),
         padding: padding,
+        shrinkWrap: shrinkWrap ?? false,
         builderDelegate: PagedChildBuilderDelegate<B>(
           itemBuilder: itemWidgetBuilder,
           noItemsFoundIndicatorBuilder: noItemsFoundBuilder,
