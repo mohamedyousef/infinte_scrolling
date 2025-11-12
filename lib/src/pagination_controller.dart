@@ -24,5 +24,6 @@ abstract class PaginationController<A, B> {
     pagingController.refresh();
   }
 
+  void dispose() => pagingController.dispose();
   void showError(error) => pagingController.error = error;
 }
