@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
+import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart' hide ItemWidgetBuilder;
 import 'package:infinte_scrolling/src/pagination_controller.dart';
+import 'package:infinte_scrolling/src/pagination_paging_controller.dart';
 
 typedef ItemWidgetBuilder<ItemType> = Widget Function(
   BuildContext context,
@@ -15,6 +16,26 @@ const _circularIndicator = Center(
     ),
   ),
 );
+
+/// Rebuilds [builder] with the current paging state of [controller], and
+/// hands it the callback the paged widgets use to request the next page.
+class _PagingStateBuilder<K, T> extends StatelessWidget {
+  const _PagingStateBuilder({
+    required this.controller,
+    required this.builder,
+  });
+
+  final PaginationPagingController<K, T> controller;
+  final Widget Function(BuildContext context, PagingState<K, T> state, VoidCallback fetchNextPage) builder;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<PagingState<K, T>>(
+      valueListenable: controller,
+      builder: (context, state, _) => builder(context, state, controller.fetchNextPage),
+    );
+  }
+}
 
 class PaginationSliverListView<A, B> extends StatelessWidget {
   final PaginationController<A?, B> controller;
@@ -34,13 +55,17 @@ class PaginationSliverListView<A, B> extends StatelessWidget {
   Widget build(
     BuildContext context,
   ) {
-    return PagedSliverList<A?, B>(
-      pagingController: controller.pagingController,
-      builderDelegate: PagedChildBuilderDelegate<B>(
-        firstPageProgressIndicatorBuilder: firstPageProgressIndicator ?? (context) => _circularIndicator,
-        noItemsFoundIndicatorBuilder: noItemsFoundBuilder,
-        newPageProgressIndicatorBuilder: (_) => const Center(child: _circularIndicator),
-        itemBuilder: itemWidgetBuilder,
+    return _PagingStateBuilder<A?, B>(
+      controller: controller.pagingController,
+      builder: (context, state, fetchNextPage) => PagedSliverList<A?, B>(
+        state: state,
+        fetchNextPage: fetchNextPage,
+        builderDelegate: PagedChildBuilderDelegate<B>(
+          firstPageProgressIndicatorBuilder: firstPageProgressIndicator ?? (context) => _circularIndicator,
+          noItemsFoundIndicatorBuilder: noItemsFoundBuilder,
+          newPageProgressIndicatorBuilder: (_) => const Center(child: _circularIndicator),
+          itemBuilder: itemWidgetBuilder,
+        ),
       ),
     );
   }
@@ -78,21 +103,25 @@ class PaginationSliverGridView<A, B> extends StatelessWidget {
   Widget build(
     BuildContext context,
   ) {
-    return PagedSliverGrid<A?, B>(
-      pagingController: controller.pagingController,
-      builderDelegate: PagedChildBuilderDelegate<B>(
-        newPageProgressIndicatorBuilder: (_) => const Center(child: _circularIndicator),
-        itemBuilder: itemWidgetBuilder,
-        noItemsFoundIndicatorBuilder: noItemsFoundBuilder,
-        firstPageErrorIndicatorBuilder: firstPageErrorIndicatorBuilder,
-        firstPageProgressIndicatorBuilder: firstPageProgressIndicator,
-      ),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        childAspectRatio: aspectRatio ?? 1.0,
-        crossAxisSpacing: crossAxisSpacing ?? 8,
-        mainAxisSpacing: mainAxisSpacing ?? 8,
-        crossAxisCount: crossAxisCount,
-        mainAxisExtent: itemExtent,
+    return _PagingStateBuilder<A?, B>(
+      controller: controller.pagingController,
+      builder: (context, state, fetchNextPage) => PagedSliverGrid<A?, B>(
+        state: state,
+        fetchNextPage: fetchNextPage,
+        builderDelegate: PagedChildBuilderDelegate<B>(
+          newPageProgressIndicatorBuilder: (_) => const Center(child: _circularIndicator),
+          itemBuilder: itemWidgetBuilder,
+          noItemsFoundIndicatorBuilder: noItemsFoundBuilder,
+          firstPageErrorIndicatorBuilder: firstPageErrorIndicatorBuilder,
+          firstPageProgressIndicatorBuilder: firstPageProgressIndicator,
+        ),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          childAspectRatio: aspectRatio ?? 1.0,
+          crossAxisSpacing: crossAxisSpacing ?? 8,
+          mainAxisSpacing: mainAxisSpacing ?? 8,
+          crossAxisCount: crossAxisCount,
+          mainAxisExtent: itemExtent,
+        ),
       ),
     );
   }
@@ -137,23 +166,27 @@ class PaginationListView<A, B> extends StatelessWidget {
   ) {
     return RefreshIndicator(
       onRefresh: () => Future.sync(() => controller.refresh()),
-      child: PagedListView.separated(
-        separatorBuilder: separatorBuilder ?? (_, __) => const SizedBox.shrink(),
-        padding: padding,
-        itemExtent: itemExtent,
-        scrollDirection: scrollDirection ?? Axis.vertical,
-        reverse: reverse,
-        pagingController: controller.pagingController,
-        scrollController: scrollController,
-        shrinkWrap: shrinkWrap ?? false,
-        physics: physics ?? const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-        builderDelegate: PagedChildBuilderDelegate<B>(
-          noItemsFoundIndicatorBuilder: noItemsFoundBuilder,
-          itemBuilder: itemWidgetBuilder,
-          firstPageErrorIndicatorBuilder: firstPageErrorIndicatorBuilder,
-          firstPageProgressIndicatorBuilder:
-              firstPageProgressIndicator ?? (_) => const Center(child: _circularIndicator),
-          newPageProgressIndicatorBuilder: (_) => const Center(child: _circularIndicator),
+      child: _PagingStateBuilder<A?, B>(
+        controller: controller.pagingController,
+        builder: (context, state, fetchNextPage) => PagedListView<A?, B>.separated(
+          state: state,
+          fetchNextPage: fetchNextPage,
+          separatorBuilder: separatorBuilder ?? (_, __) => const SizedBox.shrink(),
+          padding: padding,
+          itemExtent: itemExtent,
+          scrollDirection: scrollDirection ?? Axis.vertical,
+          reverse: reverse,
+          scrollController: scrollController,
+          shrinkWrap: shrinkWrap ?? false,
+          physics: physics ?? const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          builderDelegate: PagedChildBuilderDelegate<B>(
+            noItemsFoundIndicatorBuilder: noItemsFoundBuilder,
+            itemBuilder: itemWidgetBuilder,
+            firstPageErrorIndicatorBuilder: firstPageErrorIndicatorBuilder,
+            firstPageProgressIndicatorBuilder:
+                firstPageProgressIndicator ?? (_) => const Center(child: _circularIndicator),
+            newPageProgressIndicatorBuilder: (_) => const Center(child: _circularIndicator),
+          ),
         ),
       ),
     );
@@ -200,26 +233,30 @@ class PaginationGridView<A, B> extends StatelessWidget {
   ) {
     return RefreshIndicator(
       onRefresh: () => controller.refresh(),
-      child: PagedGridView<A?, B>(
-        pagingController: controller.pagingController,
-        scrollController: scrollController,
-        physics: physics ?? const BouncingScrollPhysics(),
-        padding: padding,
-        shrinkWrap: shrinkWrap ?? false,
-        builderDelegate: PagedChildBuilderDelegate<B>(
-          itemBuilder: itemWidgetBuilder,
-          noItemsFoundIndicatorBuilder: noItemsFoundBuilder,
-          firstPageErrorIndicatorBuilder: firstPageErrorIndicatorBuilder,
-          firstPageProgressIndicatorBuilder:
-              firstPageProgressIndicator ?? (_) => const Center(child: _circularIndicator),
-          newPageProgressIndicatorBuilder: (_) => const Center(child: _circularIndicator),
-        ),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          childAspectRatio: aspectRatio ?? 1.0,
-          crossAxisSpacing: crossAxisSpacing ?? 8,
-          mainAxisSpacing: mainAxisSpacing ?? 8,
-          crossAxisCount: crossAxisCount,
-          mainAxisExtent: itemExtent,
+      child: _PagingStateBuilder<A?, B>(
+        controller: controller.pagingController,
+        builder: (context, state, fetchNextPage) => PagedGridView<A?, B>(
+          state: state,
+          fetchNextPage: fetchNextPage,
+          scrollController: scrollController,
+          physics: physics ?? const BouncingScrollPhysics(),
+          padding: padding,
+          shrinkWrap: shrinkWrap ?? false,
+          builderDelegate: PagedChildBuilderDelegate<B>(
+            itemBuilder: itemWidgetBuilder,
+            noItemsFoundIndicatorBuilder: noItemsFoundBuilder,
+            firstPageErrorIndicatorBuilder: firstPageErrorIndicatorBuilder,
+            firstPageProgressIndicatorBuilder:
+                firstPageProgressIndicator ?? (_) => const Center(child: _circularIndicator),
+            newPageProgressIndicatorBuilder: (_) => const Center(child: _circularIndicator),
+          ),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            childAspectRatio: aspectRatio ?? 1.0,
+            crossAxisSpacing: crossAxisSpacing ?? 8,
+            mainAxisSpacing: mainAxisSpacing ?? 8,
+            crossAxisCount: crossAxisCount,
+            mainAxisExtent: itemExtent,
+          ),
         ),
       ),
     );
