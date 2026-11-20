@@ -40,7 +40,7 @@ Add `infinte_scrolling` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  infinte_scrolling: ^1.0.0
+  infinte_scrolling: ^2.0.0
 ```
 
 Then run:
@@ -101,10 +101,15 @@ The package follows a simple architecture:
 ```
 PaginationController (Abstract)
     ↓
-PagingController (from infinite_scroll_pagination)
+PaginationPagingController (PagingState from infinite_scroll_pagination 5.x)
     ↓
 Pagination Views (ListView, GridView, Sliver variants)
 ```
+
+`PaginationPagingController` keeps the push-style API of the 4.x
+`PagingController` (`itemList`, `error`, `nextPageKey`, `appendPage`,
+`appendLastPage`, `refresh`, page-request listeners) and feeds the 5.x
+widgets the `PagingState` and `fetchNextPage` callback they expect.
 
 ### Type Parameters
 
@@ -124,7 +129,7 @@ An abstract base class that manages pagination state and logic.
 
 #### Properties
 
-- `pagingController`: The underlying `PagingController<A?, B>` instance
+- `pagingController`: The underlying `PaginationPagingController<A?, B>` instance (a `ValueListenable<PagingState<A?, B>>`)
 
 #### Methods
 
